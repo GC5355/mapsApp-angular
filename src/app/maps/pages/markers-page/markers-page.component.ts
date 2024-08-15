@@ -7,6 +7,11 @@ interface MarkerAndColor {
   marker: Marker
 }
 
+interface PlainMarker {
+  color: string,
+  lngLat: number[]
+}
+
 @Component({
   selector: 'maps-markers',
   templateUrl: './markers-page.component.html',
@@ -17,7 +22,6 @@ export class MarkersPageComponent {
   @ViewChild('map') divMap?: ElementRef;
 
   public markers: MarkerAndColor[] = [];
-
   public map?: Map;
   public currentLngLat: LngLat = new LngLat(-74.5, 40)
 
@@ -32,6 +36,8 @@ export class MarkersPageComponent {
       center: this.currentLngLat, // starting position [lng, lat]
       zoom: 13, // starting zoom
     });
+
+    this.readFromLocalStorage()
 
 
     // ---  Para cambiar los estilos del marcador ---
@@ -54,7 +60,6 @@ export class MarkersPageComponent {
     const lngLat = this.map.getCenter()
 
     this.addMarker(lngLat, color)
-
   }
 
 
@@ -72,12 +77,57 @@ export class MarkersPageComponent {
       marker: marker,
       color: color
      });
+
+     this.saveToLocalStorage();
+
+     marker.on('dragend' , () => {                  // Para guardar la ubicacion del marker cuando lo muevo haciendo drag & drop
+      this.saveToLocalStorage();
+     });
+
   }
 
   deteleMarker( index: number) {
     this.markers[index].marker.remove();
     this.markers.splice( index, 1 );
   }
+
+
+  flyTo( marker: Marker ){
+    this.map?.flyTo({
+      zoom: 14,
+      center: marker.getLngLat()
+    })
+
+  }
+
+
+
+  saveToLocalStorage(){
+    const plainMarkers: PlainMarker[] = this.markers.map( ({color, marker }) => {
+      return {
+        color,
+        lngLat: marker.getLngLat().toArray()
+      }
+    });
+
+    localStorage.setItem('plainMarkers', JSON.stringify( plainMarkers ));
+  }
+
+  readFromLocalStorage(){
+    const plainMarkersString = localStorage.getItem('plainMarkers') ?? '[]';
+    console.log(plainMarkersString);
+
+    const plainMarkers : PlainMarker[] = JSON.parse( plainMarkersString );
+
+    plainMarkers.forEach( ({ color,lngLat }) => {
+      const [ lng, lat ] = lngLat;
+      const coords = new LngLat( lng, lat );
+
+      this.addMarker( coords, color );
+    })
+
+  }
+
 
 
 }
